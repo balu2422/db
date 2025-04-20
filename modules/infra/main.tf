@@ -1,17 +1,22 @@
-# 1. Custom VPC name instead of random
+resource "random_id" "vpc_name_suffix" {
+  byte_length = 8
+}
+
+# ------------------------------
+# VPC and Subnets
+# ------------------------------
 resource "aws_vpc" "main" {
-  cidr_block = var.vpc_cidr
+  cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
   tags = {
-    Name        = "custom-${var.project_name}-vpc"
+    Name        = "${var.project_name}-vpc-${random_id.vpc_name_suffix.hex}"
     Environment = "Dev"
     Project     = var.project_name
   }
 }
 
-# 2. Private Subnets (Only 2 private subnets)
 resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, 0)
@@ -36,11 +41,24 @@ resource "aws_subnet" "private_b" {
   }
 }
 
-# 3. Public Subnet (for NAT Gateway and EC2)
-resource "aws_subnet" "public_a" {
+resource "aws_subnet" "private_c" {
+  count             = length(var.availability_zones) > 2 ? 1 : 0
   vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 3)
-  availability_zone = element(var.availability_zones, 0)
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 2)
+  availability_zone = element(var.availability_zones, 2)
+
+  tags = {
+    Name        = "${var.project_name}-private-c"
+    Environment = "Dev"
+    Project     = var.project_name
+  }
+}
+
+resource "aws_subnet" "public_a" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, 10)
+  availability_zone       = element(var.availability_zones, 0)
+  map_public_ip_on_launch = true
 
   tags = {
     Name        = "${var.project_name}-public-a"
@@ -49,7 +67,9 @@ resource "aws_subnet" "public_a" {
   }
 }
 
-# 4. Internet Gateway for Public Subnet (EC2 access)
+# ------------------------------
+# Internet Gateway & Route Tables
+# ------------------------------
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 
@@ -60,24 +80,6 @@ resource "aws_internet_gateway" "gw" {
   }
 }
 
-# 5. NAT Gateway in Public Subnet
-resource "aws_eip" "nat" {
-  vpc = true
-}
-
-resource "aws_nat_gateway" "nat" {
-  subnet_id     = aws_subnet.public_a.id
-  allocation_id = aws_eip.nat.id
-
-  tags = {
-    Name        = "${var.project_name}-nat"
-    Environment = "Dev"
-    Project     = var.project_name
-  }
-}
-
-# 6. Route Tables
-# Public route table for EC2 with IGW
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -93,93 +95,30 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Private route table for Private Subnets (uses NAT Gateway)
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
-  }
-
-  tags = {
-    Name        = "${var.project_name}-private-rt"
-    Environment = "Dev"
-    Project     = var.project_name
-  }
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.public.id
 }
 
-# 7. Route Table Associations
-# Public route table associations for EC2 subnets
-resource "aws_route_table_association" "public_a" {
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_c" {
+  count          = length(var.availability_zones) > 2 ? 1 : 0
+  subnet_id      = aws_subnet.private_c[0].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_subnet_association" {
   subnet_id      = aws_subnet.public_a.id
   route_table_id = aws_route_table.public.id
 }
 
-# Private route table associations
-resource "aws_route_table_association" "private_a" {
-  subnet_id      = aws_subnet.private_a.id
-  route_table_id = aws_route_table.private.id
-}
-
-resource "aws_route_table_association" "private_b" {
-  subnet_id      = aws_subnet.private_b.id
-  route_table_id = aws_route_table.private.id
-}
-
-# 8. EC2 Instance in Public Subnet (with Internet Access)
-resource "aws_instance" "ec2_instance" {
-  ami             = var.ec2_ami_id
-  instance_type   = var.ec2_instance_type
-  subnet_id       = aws_subnet.public_a.id
-  associate_public_ip_address = true
-
-
-  tags = {
-    Name        = "${var.project_name}-ec2-instance"
-    Environment = "Dev"
-    Project     = var.project_name
-  }
-
-  security_groups = [aws_security_group.ec2_sg.name]
-
-  user_data = <<-EOF
-              #!/bin/bash
-              sudo apt update
-              sudo apt install mysql-client -y
-              EOF
-}
-
-# 9. Security Groups
-# Security group for EC2 instance in public subnet (for HTTP/HTTPS access)
-resource "aws_security_group" "ec2_sg" {
-  name        = "${var.project_name}-ec2-sg"
-  description = "Allow inbound HTTP and SSH access to EC2"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# Security group for Aurora DB (in private subnets)
+# ------------------------------
+# Security Groups
+# ------------------------------
 resource "aws_security_group" "aurora" {
   name_prefix = "${var.aurora_cluster_name}-sg"
   vpc_id      = aws_vpc.main.id
@@ -205,43 +144,111 @@ resource "aws_security_group" "aurora" {
   }
 }
 
-# 10. Aurora DB Cluster and Instances (same as original)
+resource "aws_security_group" "ec2_sg" {
+  name_prefix = "${var.project_name}-ec2-sg"
+  vpc_id      = aws_vpc.main.id
 
-# Add db_subnet_group resource
-resource "aws_db_subnet_group" "aurora" {
-  name        = "${var.project_name}-aurora-subnet-group"
-  subnet_ids  = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  description = "Aurora DB Subnet Group"
+  ingress {
+    description = "Allow SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   tags = {
-    Name        = "${var.project_name}-aurora-subnet-group"
+    Name        = "${var.project_name}-ec2-sg"
     Environment = "Dev"
     Project     = var.project_name
   }
 }
 
+# ------------------------------
+# RDS Aurora
+# ------------------------------
+resource "aws_db_subnet_group" "aurora" {
+  name       = "${var.aurora_cluster_name}-subnet-group"
+  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id, element(concat(aws_subnet.private_c.*.id, [""]), 0)]
+}
+
+resource "random_password" "db_master_password" {
+  length           = var.db_master_password_length
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
+resource "aws_secretsmanager_secret" "aurora_credentials" {
+  name = var.secrets_manager_secret_name
+}
+
+resource "aws_secretsmanager_secret_version" "aurora_credentials_version" {
+  secret_id     = aws_secretsmanager_secret.aurora_credentials.id
+  secret_string = jsonencode({
+    username = var.db_master_username
+    password = random_password.db_master_password.result
+  })
+}
+
 resource "aws_rds_cluster" "aurora" {
-  cluster_identifier   = var.aurora_cluster_name
-  engine               = var.db_engine
-  engine_version       = var.db_engine_version
-  database_name        = var.database_name
-  master_username      = var.db_master_username
-  master_password      = random_password.db_master_password.result
-  vpc_security_group_ids = [aws_security_group.aurora.id]
-  db_subnet_group_name = aws_db_subnet_group.aurora.name
-  skip_final_snapshot  = true
+  cluster_identifier       = var.aurora_cluster_name
+  engine                   = var.db_engine
+  engine_version           = var.db_engine_version
+  database_name            = var.database_name
+  master_username          = var.db_master_username
+  master_password          = random_password.db_master_password.result
+  vpc_security_group_ids   = [aws_security_group.aurora.id]
+  db_subnet_group_name     = aws_db_subnet_group.aurora.name
+  skip_final_snapshot      = true
 }
 
 resource "aws_rds_cluster_instance" "instance_1" {
-  cluster_identifier   = aws_rds_cluster.aurora.id
-  instance_class       = var.db_instance_type
-  engine               = var.db_engine
-  engine_version       = var.db_engine_version
+  cluster_identifier = aws_rds_cluster.aurora.id
+  instance_class     = var.db_instance_type
+  engine             = var.db_engine
+  engine_version     = var.db_engine_version
 }
 
 resource "aws_rds_cluster_instance" "instance_2" {
-  cluster_identifier   = aws_rds_cluster.aurora.id
-  instance_class       = var.db_instance_type
-  engine               = var.db_engine
-  engine_version       = var.db_engine_version
+  cluster_identifier = aws_rds_cluster.aurora.id
+  instance_class     = var.db_instance_type
+  engine             = var.db_engine
+  engine_version     = var.db_engine_version
+}
+
+# ------------------------------
+# EC2 Instance
+# ------------------------------
+resource "aws_key_pair" "default" {
+  key_name   = "${var.project_name}-key"
+  public_key = file(var.public_key_path)
+}
+
+resource "aws_instance" "web" {
+  ami                         = var.ami_id
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.public_a.id
+  associate_public_ip_address = true
+  key_name                    = aws_key_pair.default.key_name
+  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
+
+  tags = {
+    Name        = "${var.project_name}-web"
+    Environment = "Dev"
+    Project     = var.project_name
+  }
 }
