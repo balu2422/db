@@ -1,3 +1,4 @@
+
 variable "project_name" {
   type        = string
   description = "A unique name for the project"
@@ -43,7 +44,7 @@ variable "db_engine_version" {
 variable "db_instance_type" {
   type        = string
   description = "The instance type for Aurora nodes"
-  default     = "db.t4g.medium"
+  default     = "db.t4g.medium" # Try a compatible instance type
 }
 
 variable "db_master_username" {
@@ -67,7 +68,7 @@ variable "aurora_cluster_name" {
 variable "secrets_manager_secret_name" {
   type        = string
   description = "The name of the secret in AWS Secrets Manager"
-  default     = "aurora-master-credentials-v6"
+  default     = "aurora-master-credentials-v6" # Use a new unique name
 }
 
 variable "db_port" {
@@ -79,5 +80,5 @@ variable "db_port" {
 variable "allowed_inbound_cidrs" {
   type        = list(string)
   description = "List of CIDR blocks allowed to access the AuroraDB"
-  default     = ["10.0.0.0/8"]
+  default     = ["10.0.0.0/8"] # Adjust this to your network range for security
 }
