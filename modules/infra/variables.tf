@@ -1,114 +1,89 @@
-# Project Name
 variable "project_name" {
-  description = "The name of the project"
   type        = string
-  default     = "my_project"
+  description = "A unique name for the project"
 }
 
-# VPC CIDR Block
+variable "region" {
+  type        = string
+  description = "AWS region to deploy to"
+}
+
 variable "vpc_cidr" {
-  description = "The CIDR block for the VPC"
   type        = string
-  default     = "10.0.0.0/16"
+  description = "CIDR block for the VPC"
 }
 
-# Availability Zones (2 zones for your setup)
 variable "availability_zones" {
-  description = "A list of Availability Zones"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  description = "List of Availability Zones for subnets"
 }
 
-# EC2 Instance Type
-variable "ec2_instance_type" {
-  description = "EC2 instance type"
-  type        = string
-  default     = "t2.micro"
-}
-
-# EC2 AMI ID
-variable "ec2_ami_id" {
-  description = "AMI ID for the EC2 instance"
-  type        = string
-  default     = "ami-0e449927258d45bc4"  # Replace with your preferred AMI ID
-}
-
-
-# Aurora DB Cluster Name
-variable "aurora_cluster_name" {
-  description = "Aurora DB Cluster Name"
-  type        = string
-  default     = "my-aurora-cluster"
-}
-
-# Database Engine for Aurora
-variable "db_engine" {
-  description = "Database engine for Aurora"
-  type        = string
-  default     = "aurora-mysql"
-}
-
-# Database Engine Version for Aurora
-variable "db_engine_version" {
-  description = "Aurora DB engine version"
-  type        = string
-  default     = "5.7"
-}
-
-# Database Name
 variable "database_name" {
-  description = "The database name"
   type        = string
-  default     = "my_database"
+  description = "The initial database name"
 }
 
-# Aurora DB Master Username
-variable "db_master_username" {
-  description = "The master username for the database"
+variable "db_engine" {
   type        = string
-  default     = "admin"
+  description = "The database engine type"
 }
 
-# Aurora DB Port
-variable "db_port" {
-  description = "The port used by the Aurora DB"
-  type        = number
-  default     = 3306
+variable "db_engine_version" {
+  type        = string
+  description = "The database engine version"
+  default     = "8.0.mysql_aurora.3.05.2"
 }
 
-# Allowed CIDR Blocks for DB access (private subnets)
-variable "allowed_inbound_cidrs" {
-  description = "List of CIDR blocks allowed to access the Aurora DB"
-  type        = list(string)
-  default     = ["10.0.0.0/16"]
-}
-
-# DB Instance Type
 variable "db_instance_type" {
-  description = "The type of DB instances for the Aurora cluster"
   type        = string
-  default     = "db.r5.large"
+  description = "The instance type for Aurora nodes"
 }
 
-# Generate random password for DB Master
-resource "random_password" "db_master_password" {
-  length  = 16
-  special = true
-  upper   = true
-  lower   = true
-  number  = true
-}
-
-# DB Subnet Group Name (New)
-variable "db_subnet_group_name" {
-  description = "The name of the DB subnet group for Aurora"
+variable "db_master_username" {
   type        = string
-  default     = "aurora-db-subnet-group"
+  description = "The master username for the Aurora cluster"
 }
 
-# DB Subnet CIDR Blocks (New)
-variable "db_subnet_cidr" {
-  description = "List of CIDR blocks for the DB subnet group"
+variable "db_master_password_length" {
+  type        = number
+  description = "Length of the generated master password"
+}
+
+variable "aurora_cluster_name" {
+  type        = string
+  description = "The name of the Aurora cluster"
+}
+
+variable "secrets_manager_secret_name" {
+  type        = string
+  description = "The name of the secret in AWS Secrets Manager"
+  default     = "aurora-master-credentials-new123"
+}
+
+variable "db_port" {
+  type        = number
+  description = "The port the database listens on"
+}
+
+variable "allowed_inbound_cidrs" {
   type        = list(string)
-  default     = ["10.0.0.0/24", "10.0.1.0/24"]
+  description = "List of CIDR blocks allowed to access the AuroraDB"
+}
+
+# -----------------------------------
+# NEW VARIABLES for EC2 & Public Subnet
+# -----------------------------------
+variable "ami_id" {
+  type        = string
+  description = "AMI ID for EC2 instance"
+}
+
+variable "instance_type" {
+  type        = string
+  description = "EC2 instance type"
+}
+
+variable "public_key_path" {
+  type        = string
+  description = "Path to your local SSH public key file"
 }
