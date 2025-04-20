@@ -23,10 +23,6 @@ variable "ec2_ami_id" {
   default     = "ami-0c55b159cbfafe1f0"
 }
 
-variable "ec2_key_pair" {
-  type        = string
-  default     = "my-key-pair"
-}
 
 variable "aurora_cluster_name" {
   type        = string
