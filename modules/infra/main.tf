@@ -206,6 +206,20 @@ resource "aws_security_group" "aurora" {
 }
 
 # 10. Aurora DB Cluster and Instances (same as original)
+
+# Add db_subnet_group resource
+resource "aws_db_subnet_group" "aurora" {
+  name        = "${var.project_name}-aurora-subnet-group"
+  subnet_ids  = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+  description = "Aurora DB Subnet Group"
+
+  tags = {
+    Name        = "${var.project_name}-aurora-subnet-group"
+    Environment = "Dev"
+    Project     = var.project_name
+  }
+}
+
 resource "aws_rds_cluster" "aurora" {
   cluster_identifier   = var.aurora_cluster_name
   engine               = var.db_engine
