@@ -30,15 +30,9 @@ variable "ec2_instance_type" {
 variable "ec2_ami_id" {
   description = "AMI ID for the EC2 instance"
   type        = string
-  default     = "ami-0c55b159cbfafe1f0"  # Replace with your preferred AMI ID
+  default     = "ami-0e449927258d45bc4"  # Replace with your preferred AMI ID
 }
 
-# EC2 Key Pair Name
-variable "ec2_key_pair" {
-  description = "The name of the EC2 key pair"
-  type        = string
-  default     = "my-key-pair"  # Replace with your key pair name
-}
 
 # Aurora DB Cluster Name
 variable "aurora_cluster_name" {
