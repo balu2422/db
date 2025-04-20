@@ -34,7 +34,6 @@ module "aurora_db_setup" {
   allowed_inbound_cidrs        = var.allowed_inbound_cidrs
 }
 
-# Output values from the module
 output "aurora_endpoint" {
   value       = module.aurora_db_setup.aurora_cluster_endpoint
   description = "The endpoint of the Aurora DB cluster"
@@ -84,3 +83,4 @@ output "ec2_public_ip" {
   value       = module.aurora_db_setup.ec2_public_ip
   description = "Public IP of the EC2 instance"
 }
+
