@@ -25,6 +25,22 @@ output "public_subnet_a_id" {
   value       = aws_subnet.public_a.id
 }
 
+# Optional Subnet CIDR Blocks (for clarity)
+output "private_subnet_a_cidr" {
+  description = "The CIDR block of the first private subnet"
+  value       = aws_subnet.private_a.cidr_block
+}
+
+output "private_subnet_b_cidr" {
+  description = "The CIDR block of the second private subnet"
+  value       = aws_subnet.private_b.cidr_block
+}
+
+output "public_subnet_a_cidr" {
+  description = "The CIDR block of the public subnet"
+  value       = aws_subnet.public_a.cidr_block
+}
+
 # EC2 Instance Information
 output "ec2_instance_id" {
   description = "The ID of the EC2 instance"
@@ -55,4 +71,10 @@ output "aurora_master_username" {
 output "aurora_instance_ids" {
   description = "The IDs of the Aurora DB instances"
   value       = [aws_rds_cluster_instance.instance_1.id, aws_rds_cluster_instance.instance_2.id]
+}
+
+# New Output for DB Subnet Group Name
+output "db_subnet_group_name" {
+  description = "The name of the Aurora DB subnet group"
+  value       = var.db_subnet_group_name
 }
