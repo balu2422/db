@@ -69,21 +69,3 @@ variable "allowed_inbound_cidrs" {
   type        = list(string)
   description = "List of CIDR blocks allowed to access the AuroraDB"
 }
-
-# -----------------------------------
-# NEW VARIABLES for EC2 & Public Subnet
-# -----------------------------------
-variable "ami_id" {
-  type        = string
-  description = "AMI ID for EC2 instance"
-}
-
-variable "instance_type" {
-  type        = string
-  description = "EC2 instance type"
-}
-
-variable "public_key_path" {
-  type        = string
-  description = "Path to your local SSH public key file"
-}
