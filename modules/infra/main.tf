@@ -2,11 +2,8 @@ resource "random_id" "vpc_name_suffix" {
   byte_length = 8
 }
 
-# ------------------------------
-# VPC and Subnets
-# ------------------------------
 resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
+  cidr_block = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -54,22 +51,6 @@ resource "aws_subnet" "private_c" {
   }
 }
 
-resource "aws_subnet" "public_a" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(var.vpc_cidr, 8, 10)
-  availability_zone       = element(var.availability_zones, 0)
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "${var.project_name}-public-a"
-    Environment = "Dev"
-    Project     = var.project_name
-  }
-}
-
-# ------------------------------
-# Internet Gateway & Route Tables
-# ------------------------------
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.main.id
 
@@ -111,14 +92,6 @@ resource "aws_route_table_association" "public_c" {
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_route_table_association" "public_subnet_association" {
-  subnet_id      = aws_subnet.public_a.id
-  route_table_id = aws_route_table.public.id
-}
-
-# ------------------------------
-# Security Groups
-# ------------------------------
 resource "aws_security_group" "aurora" {
   name_prefix = "${var.aurora_cluster_name}-sg"
   vpc_id      = aws_vpc.main.id
@@ -144,43 +117,6 @@ resource "aws_security_group" "aurora" {
   }
 }
 
-resource "aws_security_group" "ec2_sg" {
-  name_prefix = "${var.project_name}-ec2-sg"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "Allow SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "Allow HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name        = "${var.project_name}-ec2-sg"
-    Environment = "Dev"
-    Project     = var.project_name
-  }
-}
-
-# ------------------------------
-# RDS Aurora
-# ------------------------------
 resource "aws_db_subnet_group" "aurora" {
   name       = "${var.aurora_cluster_name}-subnet-group"
   subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id, element(concat(aws_subnet.private_c.*.id, [""]), 0)]
@@ -205,50 +141,28 @@ resource "aws_secretsmanager_secret_version" "aurora_credentials_version" {
 }
 
 resource "aws_rds_cluster" "aurora" {
-  cluster_identifier       = var.aurora_cluster_name
-  engine                   = var.db_engine
-  engine_version           = var.db_engine_version
-  database_name            = var.database_name
-  master_username          = var.db_master_username
-  master_password          = random_password.db_master_password.result
-  vpc_security_group_ids   = [aws_security_group.aurora.id]
-  db_subnet_group_name     = aws_db_subnet_group.aurora.name
-  skip_final_snapshot      = true
+  cluster_identifier   = var.aurora_cluster_name
+  engine               = var.db_engine
+  engine_version       = var.db_engine_version
+  database_name        = var.database_name
+  master_username      = var.db_master_username
+  master_password      = random_password.db_master_password.result # Terraform sets initial password
+  vpc_security_group_ids = [aws_security_group.aurora.id]
+  db_subnet_group_name = aws_db_subnet_group.aurora.name
+  skip_final_snapshot  = true
+  # manage_master_user_password = false # REMOVE this line
 }
 
 resource "aws_rds_cluster_instance" "instance_1" {
-  cluster_identifier = aws_rds_cluster.aurora.id
-  instance_class     = var.db_instance_type
-  engine             = var.db_engine
-  engine_version     = var.db_engine_version
+  cluster_identifier   = aws_rds_cluster.aurora.id
+  instance_class       = var.db_instance_type
+  engine               = var.db_engine
+  engine_version       = var.db_engine_version
 }
 
 resource "aws_rds_cluster_instance" "instance_2" {
-  cluster_identifier = aws_rds_cluster.aurora.id
-  instance_class     = var.db_instance_type
-  engine             = var.db_engine
-  engine_version     = var.db_engine_version
-}
-
-# ------------------------------
-# EC2 Instance
-# ------------------------------
-resource "aws_key_pair" "default" {
-  key_name   = "${var.project_name}-key"
-  public_key = file(var.public_key_path)
-}
-
-resource "aws_instance" "web" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  subnet_id                   = aws_subnet.public_a.id
-  associate_public_ip_address = true
-  key_name                    = aws_key_pair.default.key_name
-  vpc_security_group_ids      = [aws_security_group.ec2_sg.id]
-
-  tags = {
-    Name        = "${var.project_name}-web"
-    Environment = "Dev"
-    Project     = var.project_name
-  }
+  cluster_identifier   = aws_rds_cluster.aurora.id
+  instance_class       = var.db_instance_type
+  engine               = var.db_engine
+  engine_version       = var.db_engine_version
 }
