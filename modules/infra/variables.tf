@@ -104,3 +104,17 @@ resource "random_password" "db_master_password" {
   lower   = true
   number  = true
 }
+
+# DB Subnet Group Name (New)
+variable "db_subnet_group_name" {
+  description = "The name of the DB subnet group for Aurora"
+  type        = string
+  default     = "aurora-db-subnet-group"
+}
+
+# DB Subnet CIDR Blocks (New)
+variable "db_subnet_cidr" {
+  description = "List of CIDR blocks for the DB subnet group"
+  type        = list(string)
+  default     = ["10.0.0.0/24", "10.0.1.0/24"]
+}
