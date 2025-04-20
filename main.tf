@@ -10,7 +10,6 @@ module "infra" {
   availability_zones  = var.availability_zones
   ec2_instance_type   = var.ec2_instance_type
   ec2_ami_id          = var.ec2_ami_id
-  ec2_key_pair        = var.ec2_key_pair
   aurora_cluster_name = var.aurora_cluster_name
   db_engine           = var.db_engine
   db_engine_version   = var.db_engine_version
