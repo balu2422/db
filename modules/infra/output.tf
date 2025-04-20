@@ -1,80 +1,57 @@
-# VPC Information
 output "vpc_id" {
-  description = "The ID of the VPC"
   value       = aws_vpc.main.id
+  description = "The ID of the VPC"
 }
 
-output "vpc_cidr" {
-  description = "The CIDR block of the VPC"
-  value       = aws_vpc.main.cidr_block
+output "private_subnet_ids" {
+  value       = [
+    aws_subnet.private_a.id,
+    aws_subnet.private_b.id,
+    element(concat(aws_subnet.private_c.*.id, [""]), 0)
+  ]
+  description = "List of private subnet IDs"
 }
 
-# Subnet Information
-output "private_subnet_a_id" {
-  description = "The ID of the first private subnet"
-  value       = aws_subnet.private_a.id
+output "public_subnet_ids" {
+  value       = [
+    aws_subnet.public_a.id,
+    aws_subnet.public_b.id,
+    element(concat(aws_subnet.public_c.*.id, [""]), 0)
+  ]
+  description = "List of public subnet IDs"
 }
 
-output "private_subnet_b_id" {
-  description = "The ID of the second private subnet"
-  value       = aws_subnet.private_b.id
+output "security_group_id" {
+  value       = aws_security_group.aurora.id
+  description = "The ID of the Aurora security group"
 }
 
-output "public_subnet_a_id" {
-  description = "The ID of the public subnet"
-  value       = aws_subnet.public_a.id
-}
-
-# Optional Subnet CIDR Blocks (for clarity)
-output "private_subnet_a_cidr" {
-  description = "The CIDR block of the first private subnet"
-  value       = aws_subnet.private_a.cidr_block
-}
-
-output "private_subnet_b_cidr" {
-  description = "The CIDR block of the second private subnet"
-  value       = aws_subnet.private_b.cidr_block
-}
-
-output "public_subnet_a_cidr" {
-  description = "The CIDR block of the public subnet"
-  value       = aws_subnet.public_a.cidr_block
-}
-
-# EC2 Instance Information
-output "ec2_instance_id" {
-  description = "The ID of the EC2 instance"
-  value       = aws_instance.ec2_instance.id
+output "ec2_security_group_id" {
+  value       = aws_security_group.ec2.id
+  description = "The ID of the EC2 security group"
 }
 
 output "ec2_public_ip" {
+  value       = aws_instance.ec2.public_ip
   description = "The public IP address of the EC2 instance"
-  value       = aws_instance.ec2_instance.public_ip
 }
 
-# Aurora DB Cluster Information
-output "aurora_cluster_id" {
-  description = "The ID of the Aurora DB Cluster"
-  value       = aws_rds_cluster.aurora.id
-}
-
-output "aurora_endpoint" {
-  description = "The endpoint of the Aurora DB Cluster"
+output "aurora_cluster_endpoint" {
   value       = aws_rds_cluster.aurora.endpoint
+  description = "The endpoint of the Aurora cluster"
+}
+
+output "aurora_cluster_reader_endpoint" {
+  value       = aws_rds_cluster.aurora.reader_endpoint
+  description = "The reader endpoint of the Aurora cluster"
 }
 
 output "aurora_master_username" {
-  description = "The master username for the Aurora DB Cluster"
-  value       = var.db_master_username
+  value       = aws_rds_cluster.aurora.master_username
+  description = "The master username for the Aurora cluster"
 }
 
-output "aurora_instance_ids" {
-  description = "The IDs of the Aurora DB instances"
-  value       = [aws_rds_cluster_instance.instance_1.id, aws_rds_cluster_instance.instance_2.id]
-}
-
-# New Output for DB Subnet Group Name
-output "db_subnet_group_name" {
-  description = "The name of the Aurora DB subnet group"
-  value       = var.db_subnet_group_name
+output "secrets_manager_arn" {
+  value       = aws_secretsmanager_secret.aurora_credentials.arn
+  description = "The ARN of the Secrets Manager secret"
 }
