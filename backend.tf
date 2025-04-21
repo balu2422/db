@@ -5,6 +5,5 @@ terraform {
     key            = "tf/state4"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "2-tier-architecture-modules-table"
   }
 }
